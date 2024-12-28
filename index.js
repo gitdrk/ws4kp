@@ -22,6 +22,41 @@ app.get('/stations/*', corsPassThru);
 app.get('/Conus/*', radarPassThru);
 app.get('/products/*', outlookPassThru);
 
+// 1. Define your XMLTV content as a string (or load it from a file).
+const xmltvData = `<?xml version="1.0" encoding="UTF-8"?>
+<tv generator-info-name="Example XMLTV">
+  <channel id="myweatherchannel">
+    <display-name>My Weather Channel</display-name>
+  </channel>
+  <programme 
+      start="20200101000000 +0000" 
+      stop="20400101000000 +0000" 
+      channel="myweatherchannel">
+    <title>My Weather Channel – Continuous Forecast</title>
+    <desc>A single 24/7 program running from 2020-01-01 to 2040-01-01.</desc>
+  </programme>
+</tv>`;
+
+// 2. Create a route to serve the XMLTV.
+app.get('/epg.xml', (req, res) => {
+	// Set the content type to XML.
+	res.type('application/xml');
+	// Send the XMLTV as the response body.
+	res.send(xmltvData);
+});
+
+const m3uData = `#EXTM3U
+#EXTINF:-1 tvg-id="myweatherchannel" tvg-name="My Weather Channel" tvg-logo="https://example.com/logo.png" group-title="Weather",My Weather Channel
+http://192.168.1.100:8080/live/myweather.m3u8
+`;
+
+app.get('/playlist.m3u', (req, res) => {
+	// Set the content type to M3U (also commonly "audio/x-mpegurl")
+	res.type('audio/x-mpegurl');
+	// Send the M3U data
+	res.send(m3uData);
+});
+
 app.get('/api/music/', (req, res) => {
 	const count = parseInt(req.query.count, 10) || 10;
 
