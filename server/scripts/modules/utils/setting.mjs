@@ -24,7 +24,9 @@ class Setting {
 		if (type === 'select' && urlValue !== undefined) {
 			urlState = parseFloat(urlValue);
 		}
-
+		if (type === 'text' && urlValue !== undefined) {
+			urlState = decodeURI(urlValue);
+		}
 		// get existing value if present
 		const storedValue = urlState ?? this.getFromLocalStorage();
 		if (sticky && storedValue !== null) {
@@ -35,6 +37,8 @@ class Setting {
 		switch (type) {
 			case 'select':
 				this.selectChange({ target: { value: this.myValue } });
+			case 'text':
+				return this.textInputChange({ target: { value: this.myValue } });
 				break;
 			case 'checkbox':
 			default:
@@ -96,6 +100,29 @@ class Setting {
 		return label;
 	}
 
+	generateTextInput() {
+		// create a checkbox in the selected displays area
+		const label = document.createElement('label');
+		label.for = `settings-${this.shortName}-text`;
+		label.id = `settings-${this.shortName}-label`;
+		const input = document.createElement('input');
+		input.value = this.myValue;
+		input.id = `settings-${this.shortName}-text`;
+		input.name = `settings-${this.shortName}-text`;
+		input.addEventListener('change', (e) => this.textInputChange(e));
+		const span = document.createElement('span');
+		span.innerHTML = this.name;
+		label.append(input, span);
+		this.element = label;
+
+		return label;
+	}
+
+	textInputChange(e) {
+		this.myValue = e.target.value;
+		this.storeToLocalStorage(this.myValue);
+	}
+
 	checkboxChange(e) {
 		// update the state
 		this.myValue = e.target.checked;
@@ -155,6 +182,8 @@ class Setting {
 			case 'select':
 				this.selectHighlight(newValue);
 				break;
+			case 'text':
+				this.value = newValue;
 			case 'checkbox':
 			default:
 				this.element.checked = newValue;
@@ -176,6 +205,8 @@ class Setting {
 		switch (this.type) {
 			case 'select':
 				return this.generateSelect();
+			case 'text':
+				return this.generateTextInput();
 			case 'checkbox':
 			default:
 				return this.generateCheckbox();

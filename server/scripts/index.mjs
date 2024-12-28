@@ -6,6 +6,7 @@ import {
 import { round2 } from './modules/utils/units.mjs';
 import { parseQueryString } from './modules/share.mjs';
 import settings from './modules/settings.mjs';
+import Hls from './modules/hls.mjs';
 
 document.addEventListener('DOMContentLoaded', () => {
 	init();
@@ -24,7 +25,16 @@ const categories = [
 const category = categories.join(',');
 const TXT_ADDRESS_SELECTOR = '#txtAddress';
 const TOGGLE_FULL_SCREEN_SELECTOR = '#ToggleFullScreen';
+const TOGGLE_AUDIO_SELECTOR = '#ToggleAudio';
 const BNT_GET_GPS_SELECTOR = '#btnGetGps';
+
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let audioQueue = [];
+let currentIndex = 0;
+let hasEverStarted = false;
+let streamingAudio = null;
+let sourceNode = null;
+
 
 const init = () => {
 	document.querySelector(TXT_ADDRESS_SELECTOR).addEventListener('focus', (e) => {
@@ -39,6 +49,7 @@ const init = () => {
 	document.querySelector('#NavigatePrevious').addEventListener('click', btnNavigatePreviousClick);
 	document.querySelector('#NavigatePlay').addEventListener('click', btnNavigatePlayClick);
 	document.querySelector(TOGGLE_FULL_SCREEN_SELECTOR).addEventListener('click', btnFullScreenClick);
+	document.querySelector(TOGGLE_AUDIO_SELECTOR).addEventListener('click', btnPlayAudio);
 	const btnGetGps = document.querySelector(BNT_GET_GPS_SELECTOR);
 	btnGetGps.addEventListener('click', btnGetGpsClick);
 	if (!navigator.geolocation) btnGetGps.style.display = 'none';
@@ -56,6 +67,8 @@ const init = () => {
 	document.addEventListener('keydown', documentKeydown);
 	document.addEventListener('touchmove', (e) => { if (document.fullscreenElement) e.preventDefault(); });
 
+
+	btnPlayAudio();
 	$(TXT_ADDRESS_SELECTOR).devbridgeAutocomplete({
 		serviceUrl: 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/suggest',
 		deferRequestBy: 300,
@@ -182,6 +195,100 @@ const btnFullScreenClick = () => {
 
 	return false;
 };
+
+const btnPlayAudio = async () => {
+	// If audioContext is suspended, resume it
+	if (audioContext.state === 'suspended') {
+		await audioContext.resume();
+	}
+
+	if (!hasEverStarted) {
+		streamingAudio = document.createElement('audio');
+		sourceNode = audioContext.createMediaElementSource(streamingAudio);
+		sourceNode.connect(audioContext.destination);
+
+		// If Hls is supported, use it for non-Safari browsers
+		if (Hls.isSupported()) {
+			const hls = new Hls();
+
+			// The remote HLS URL
+			const originalHlsUrl = 'https://stream.nightride.fm:8443/chillsynth/aac_hifi.m3u8';
+
+			hls.loadSource(originalHlsUrl);
+			hls.attachMedia(streamingAudio);
+
+			// Once the manifest is parsed, try playing
+			hls.on(Hls.Events.MANIFEST_PARSED, () => {
+				streamingAudio.play().catch(console.error);
+			});
+		}
+		// Safari fallback (natively supports HLS)
+		else if (streamingAudio.canPlayType('application/vnd.apple.mpegurl')) {
+			streamingAudio.src = 'https://stream.nightride.fm:8443/chillsynth/aac_hifi.m3u8';
+			streamingAudio.addEventListener('loadedmetadata', () => {
+				streamingAudio.play().catch(console.error);
+			});
+		}
+		// No HLS support
+		else {
+			console.error('Browser does not support HLS playback.');
+		}
+
+		hasEverStarted = true;
+	} else {
+		// Toggle play/pause if already started
+		if (streamingAudio.paused) {
+			streamingAudio.play().catch(console.error);
+		} else {
+			streamingAudio.pause();
+		}
+	}
+};
+
+async function fetchAndAppendTracks(count = 10) {
+	const response = await fetch(`/api/music?count=${count}`);
+	const data = await response.json();
+	const newBuffers = await loadAudioFiles(data.files);
+
+	audioQueue.push(...newBuffers);
+}
+
+async function loadAudioFiles(fileNames) {
+	const buffers = [];
+
+	for (const name of fileNames) {
+		const url = `/music/${name}`
+		const response = await fetch(url);
+		const arrayBuffer = await response.arrayBuffer();
+		const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+		buffers.push(audioBuffer);
+	}
+
+	return buffers;
+}
+
+
+function playNextTrack() {
+
+	if (currentIndex >= audioQueue.length) {
+		fetchAndAppendTracks(10).then(() => {
+			playNextTrack();
+		});
+		return;
+	}
+
+	const source = audioContext.createBufferSource();
+	source.buffer = audioQueue[currentIndex];
+	source.connect(audioContext.destination);
+
+	currentIndex += 1;
+
+	source.onended = () => {
+		playNextTrack();
+	};
+
+	source.start();
+}
 
 const enterFullScreen = () => {
 	const element = document.querySelector('#divTwc');

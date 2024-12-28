@@ -19,6 +19,7 @@ const init = () => {
 		[1.5, 'Very Slow'],
 	]);
 
+	settings.audioStream = new Setting('audio', 'Audio Stream', 'text', 'https://stream.nightride.fm:8443/chillsynth/aac_hifi.m3u8', null, true)
 	// generate html objects
 	const settingHtml = Object.values(settings).map((d) => d.generate());
 
