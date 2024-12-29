@@ -47,6 +47,7 @@
 	"dependencies": {
 		"ejs": "^3.1.5",
 		"express": "^4.17.1",
-		"hls.js": "^1.5.18"
+		"hls.js": "^1.5.18",
+		"serve-index": "^1.9.1"
 	}
 }

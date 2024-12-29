@@ -1,5 +1,7 @@
 // express
 const express = require('express');
+const serveIndex = require('serve-index');
+
 
 const app = express();
 const port = process.env.WS4KP_PORT ?? 8080;
@@ -45,6 +47,9 @@ app.get('/epg.xml', (req, res) => {
 	res.send(xmltvData);
 });
 
+app.use('/live', express.static('./server/live'));
+app.use('/live', serveIndex('./server/live', { icons: true }));
+
 const m3uData = `#EXTM3U
 #EXTINF:-1 tvg-id="myweatherchannel" tvg-name="My Weather Channel" tvg-logo="https://example.com/logo.png" group-title="Weather",My Weather Channel
 http://192.168.1.100:8080/live/myweather.m3u8
@@ -76,6 +81,10 @@ app.get('/api/music/', (req, res) => {
 	});
 });
 
+app.get('/api/ping', (req, res) => {
+	res.sendStatus(200);
+});
+
 function shuffleArray(array) {
 	// If you want to avoid modifying the original array, make a copy
 	const arrCopy = [...array];
@@ -105,6 +114,7 @@ if (process.env?.DIST === '1') {
 	app.use('/fonts', express.static(path.join(__dirname, './server/fonts')));
 	app.use('/scripts', express.static(path.join(__dirname, './server/scripts')));
 	app.use('/music', express.static(path.join(__dirname, './server/music')));
+	app.use('/live', express.static(path.join(__dirname, '/server/live')));
 	app.use('/', express.static(path.join(__dirname, './dist')));
 } else {
 	// debugging
