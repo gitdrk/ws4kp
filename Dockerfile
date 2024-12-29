@@ -5,8 +5,9 @@ COPY package.json .
 COPY package-lock.json .
 
 RUN npm ci
+VOLUME ["/mnt/weatherstar"]
 
-RUN mkdir -p /app/server && ln -s /mnt/weatherstar /app/server/live
+RUN ln -sfn /mnt/weatherstar /app/server/live
 
 
 COPY . .
