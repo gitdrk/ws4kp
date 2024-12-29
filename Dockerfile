@@ -15,7 +15,7 @@ RUN echo "Contents of /:" && ls -l / && \
   echo "Contents of /app:" && ls -l /app && \
   echo "Contents of /app/server:" && ls -l /app/server || echo "/app/server does not exist"
 
-RUN ln -sfn /mnt/weatherstar /app/server/live
+RUN rm -rf /app/server/live && ln -s /mnt/weatherstar /app/server/live
 
 
 
