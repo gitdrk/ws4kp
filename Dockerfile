@@ -6,7 +6,8 @@ COPY package-lock.json .
 
 RUN npm ci
 
-RUN ln -sf /mnt/weatherstar /app/server/live
+RUN mkdir -p /app/server && ln -s /mnt/weatherstar /app/server/live
+
 
 COPY . .
 CMD ["node", "index.js"]
