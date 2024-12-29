@@ -7,6 +7,8 @@ COPY package-lock.json .
 RUN npm ci
 VOLUME ["/mnt/weatherstar"]
 
+COPY . .
+
 # Debugging: List the file structure at various levels
 RUN echo "Contents of /:" && ls -l / && \
   echo "Contents of /mnt:" && ls -l /mnt && \
@@ -16,5 +18,5 @@ RUN echo "Contents of /:" && ls -l / && \
 RUN ln -sfn /mnt/weatherstar /app/server/live
 
 
-COPY . .
+
 CMD ["node", "index.js"]
